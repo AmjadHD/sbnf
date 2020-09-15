@@ -3,6 +3,8 @@ use crate::util::str_from_iterators;
 use bumpalo::Bump;
 use std::str::Chars;
 
+pub mod lexer;
+
 #[derive(Debug)]
 pub struct Grammar<'a> {
     pub source: &'a str,

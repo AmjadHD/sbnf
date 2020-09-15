@@ -14,6 +14,9 @@ impl Compiler {
         options: &CompileOptions<'a>,
         grammar: &Grammar<'a>,
     ) -> CompileResult<sublime_syntax::Syntax<'a>> {
+        #[cfg(debug_assertions)]
+        lexer_check(grammar);
+
         let collection = collector::collect(self, options, grammar);
 
         let (mut warnings, collected) = match collection {
@@ -38,6 +41,13 @@ impl Compiler {
 
         CompileResult::new(syntax, vec![], warnings)
     }
+}
+
+#[cfg(debug_assertions)]
+fn lexer_check(grammar: &Grammar<'_>) {
+    let lexed = crate::sbnf::lexer::lex(grammar.source);
+
+    assert!(format!("{}", lexed) == grammar.source);
 }
 
 #[cfg(test)]
