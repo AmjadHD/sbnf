@@ -176,6 +176,7 @@ if [[ $PART == 'all' || $PART == 'crate' || $PART == 'package' ]]; then
     git add Cargo.toml
     git add Cargo.lock
     git add cli/Cargo.toml
+    git add fmt/Cargo.toml
     git add wasm/Cargo.toml
     git status
     git commit -m "Release $VERSION"

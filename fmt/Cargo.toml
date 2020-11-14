@@ -1,0 +1,32 @@
+[package]
+name = "sbnf-fmt"
+version = "0.6.5"
+license-file = "LICENSE"
+repository = "https://github.com/BenjaminSchaaf/sbnf"
+description = "Formatter for SBNF: A BNF-style language for writing sublime-syntax files"
+authors = ["Benjamin Schaaf <ben.schaaf@gmail.com>"]
+edition = "2018"
+include = [
+    "/src/**",
+    "/Cargo.toml",
+    "/LICENSE",
+]
+
+[[bin]]
+name = "sbnf-fmt"
+path = "src/main.rs"
+
+[dependencies]
+sbnf = { version = "0.6.5", path = "../" }
+
+[dependencies.clap]
+version = "4.5"
+default-features = false
+features = [
+    "std",
+    "cargo",
+    "usage",
+    "help",
+    "error-context",
+    "wrap_help",
+]

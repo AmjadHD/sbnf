@@ -24,7 +24,6 @@ pub enum Token<'a> {
     Identifier(&'a str),
     Literal(&'a str),
     Regex(&'a str),
-    HeaderString(&'a str),
     OptionString(&'a str),
     OpenParenthesis,
     CloseParenthesis,
@@ -42,25 +41,20 @@ pub enum Token<'a> {
     Percent,
     Tilde,
     Equal,
-    Invalid,
+    Invalid(&'a str),
 }
 
 impl<'a> Token<'a> {
     pub fn is_insignificant(&self) -> bool {
-        match self {
-            Token::Whitespace(_)
-            | Token::Comment(_)
-            | Token::Invalid => true,
-            _ => false,
-        }
+        matches!(self, Token::Whitespace(_) | Token::Comment(_))
     }
 
     pub fn is_whitespace_or_newline(&self) -> bool {
-        match self {
-            Token::Whitespace(_)
-            | Token::Newline => true,
-            _ => false,
-        }
+        matches!(self, Token::Whitespace(_) | Token::Newline)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn len(&self) -> usize {
@@ -70,8 +64,8 @@ impl<'a> Token<'a> {
             | Token::Identifier(text)
             | Token::Literal(text)
             | Token::Regex(text)
-            | Token::HeaderString(text)
-            | Token::OptionString(text) => text.len(),
+            | Token::OptionString(text)
+            | Token::Invalid(text) => text.len(),
             Token::Newline
             | Token::OpenParenthesis
             | Token::CloseParenthesis
@@ -89,7 +83,6 @@ impl<'a> Token<'a> {
             | Token::Percent
             | Token::Tilde
             | Token::Equal => 1,
-            Token::Invalid => "INVALID_TOKEN".len(),
         }
     }
 }
@@ -102,9 +95,9 @@ impl<'a> std::fmt::Display for Token<'a> {
             | Token::Identifier(text)
             | Token::Literal(text)
             | Token::Regex(text)
-            | Token::HeaderString(text)
-            | Token::OptionString(text) => write!(f, "{}", text),
-            Token::Newline => write!(f, "\n"),
+            | Token::OptionString(text)
+            | Token::Invalid(text) => write!(f, "{}", text),
+            Token::Newline => writeln!(f),
             Token::OpenParenthesis => write!(f, "("),
             Token::CloseParenthesis => write!(f, ")"),
             Token::OpenCurlyBracket => write!(f, "{{"),
@@ -121,7 +114,6 @@ impl<'a> std::fmt::Display for Token<'a> {
             Token::Percent => write!(f, "%"),
             Token::Tilde => write!(f, "~"),
             Token::Equal => write!(f, "="),
-            Token::Invalid => write!(f, "INVALID_TOKEN"),
         }
     }
 }
@@ -193,19 +185,8 @@ pub fn lex<'a>(source: &'a str) -> Grammar<'a> {
                 lex_comment(&mut lexer);
             }
             Some(':') => {
-                lexer.next();
-
-                loop {
-                    match lexer.peek() {
-                        Some('\r') | Some('\n') | None => break,
-                        Some(_) => {
-                            lexer.next();
-                        }
-                    }
-                }
-
-                let token = Token::HeaderString(lexer.collect_token());
-                lexer.tokens.push(token);
+                lexer.skip_token();
+                lexer.tokens.push(Token::Colon);
             }
             Some('{') => {
                 lexer.skip_token();
@@ -265,7 +246,9 @@ pub fn lex<'a>(source: &'a str) -> Grammar<'a> {
                 lexer.tokens.push(token);
             }
             Some(_) => {
-                let token_type = match lexer.skip_token().unwrap() {
+                let chr = lexer.next().unwrap();
+                let text = lexer.collect_token();
+                let token = match chr {
                     '(' => Token::OpenParenthesis,
                     ')' => Token::CloseParenthesis,
                     '[' => Token::OpenSquareBracket,
@@ -279,9 +262,9 @@ pub fn lex<'a>(source: &'a str) -> Grammar<'a> {
                     '%' => Token::Percent,
                     '~' => Token::Tilde,
                     '=' => Token::Equal,
-                    _ => Token::Invalid,
+                    _ => Token::Invalid(text),
                 };
-                lexer.tokens.push(token_type);
+                lexer.tokens.push(token);
             }
             None => break,
         }
@@ -298,13 +281,8 @@ fn lex_white_space<'a>(lexer: &mut Lexer<'a>) {
         return;
     }
 
-    loop {
-        match lexer.peek() {
-            Some(' ') | Some('\t') | Some('\r') => {
-                lexer.next();
-            }
-            _ => break,
-        }
+    while let Some(' ') | Some('\t') | Some('\r') = lexer.peek() {
+        lexer.next();
     }
 
     let token = Token::Whitespace(lexer.collect_token());
@@ -377,11 +355,14 @@ mod tests {
         check_lexer(" ", 1);
         check_lexer("\t", 1);
         check_lexer(" \n\t", 3);
-        check_lexer("a:b", 2);
-        check_lexer("name: foo", 2);
+        check_lexer("a:b", 3);
+        check_lexer("name: foo", 4);
         check_lexer("# foo\n", 2);
-        check_lexer(" name\n :foo \n", 6);
+        check_lexer(" name\n :foo \n", 8);
         check_lexer("a = 'foo\\'' | `bar`*\n  ; bar = ( ''{foo ,bar}[asd]", 30);
         check_lexer("a\n= 'foo'\n  # bar\n  'bar'\n;\n", 14);
+        check_lexer("a\r\nb", 4);
+        check_lexer("a{1: x}", 6);
+        check_lexer("@", 1);
     }
 }

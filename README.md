@@ -50,6 +50,19 @@ install using:
 $ cargo install --path cli
 ```
 
+### Formatter
+
+An SBNF formatter is available in the `fmt` workspace member:
+
+```bash
+$ cargo install --path fmt
+$ sbnf-fmt --write grammar.sbnf
+```
+
+Run `sbnf-fmt --help` for all options. By default the formatter writes to
+stdout; use `--write` to update the input file or `--check` to verify that it
+is already formatted.
+
 ### Sublime Syntax
 
 The syntax definition for SBNF is found in `sbnf/sbnf.sbnf`. To compile it
